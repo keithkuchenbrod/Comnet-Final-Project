@@ -58,9 +58,11 @@ def example_network_2():
     info('Booting router scripts and generating routing tables')
     for router in routers:
         generate_routing_table(router.cmd('route -n').split(), str(router))
-    	router.cmd( 'python router.py {} 2'.format(str(router)) ) 
+    	router.cmd( 'python router.py {}'.format(str(router)) ) 
 
     info('Booting Host Scripts')
+    for host in hosts:
+        host.cmd( 'python host.py {}'.format(str(host)) )
 
     #Build net
     info("Building network\n")
