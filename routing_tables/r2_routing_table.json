@@ -1,0 +1,20 @@
+[
+    {
+        "Destination": "0.0.0.0", 
+        "Gateway": "10.0.2.2", 
+        "Genmask": "0.0.0.0", 
+        "Iface": "eth1"
+    }, 
+    {
+        "Destination": "10.0.2.0", 
+        "Gateway": "0.0.0.0", 
+        "Genmask": "255.255.255.0", 
+        "Iface": "eth1"
+    }, 
+    {
+        "Destination": "192.168.56.0", 
+        "Gateway": "0.0.0.0", 
+        "Genmask": "255.255.255.0", 
+        "Iface": "eth0"
+    }
+]
