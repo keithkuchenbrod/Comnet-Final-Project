@@ -1,20 +1,16 @@
 [
     {
+        "Cost": 1, 
         "Destination": "0.0.0.0", 
-        "Gateway": "10.0.2.2", 
-        "Genmask": "0.0.0.0", 
-        "Iface": "eth1"
+        "Destination_id": "r4", 
+        "Gateway": "0.0.0.0", 
+        "Iface": "r5-eth0"
     }, 
     {
-        "Destination": "10.0.2.0", 
+        "Cost": 1, 
+        "Destination": "0.0.0.0", 
+        "Destination_id": "r6", 
         "Gateway": "0.0.0.0", 
-        "Genmask": "255.255.255.0", 
-        "Iface": "eth1"
-    }, 
-    {
-        "Destination": "192.168.56.0", 
-        "Gateway": "0.0.0.0", 
-        "Genmask": "255.255.255.0", 
-        "Iface": "eth0"
+        "Iface": "r5-eth1"
     }
 ]
