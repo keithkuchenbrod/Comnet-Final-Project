@@ -37,6 +37,7 @@ def createLSpkt(src, webster):
 	"""
 	Takes in source addr and routing dict and formats it into Link State Packet
 	Type(1)|SEQ(1)|LEN(2)|SRC(1)|Data(1-1495)
+	Type = 1, 1B (int)
 	Inputs:
 		src: Source address 1B, 0-255 (int)
 		webster: json formatted dictionary of a specific routing table(dictionary)
@@ -65,7 +66,7 @@ def readLSpkt(pkt):
 	pkttype, seq, pktlen, src = struct.unpack('BBHB', header)
 	return [pkttype, seq, pktlen, src, webster]
 
-def createDatapkt(src, Ndest=1, Rdest, dest1=0, dest2=0, dest3=0, data):
+def createDatapkt(src, Rdest, data, Ndest=1, dest1=0, dest2=0, dest3=0):
 	"""
 	Creates Data packet with the fields specified below
 	Type(1)|SEQ(1)|LEN(2)|SRC(1)|NDEST(1)|RDEST(1)|DEST1(1)|DEST2(1)|DEST3(1)|DATA(1-1491)print(str(4).encode('utf-8'))
@@ -74,12 +75,12 @@ def createDatapkt(src, Ndest=1, Rdest, dest1=0, dest2=0, dest3=0, data):
 	pktlen = length of data input (int)
 	Inputs:
 		src: Source ID (int)
-		Ndest: K defaults to 1, possible values 1-3 (int)
 		Rdest: Rendezvous router ID (int)
+		data: data to be sent (str)
+		Ndest: K, defaults to 1, possible values 1-3 (int)
 		dest1: Destination 1 ID defaults to 0 (int)
 		dest2: Destination 2 ID defaults to 0 (int)
 		dest3: Destination 3 ID defaults to 0(int)
-		data: data to be sent (str)
 	Outputs:
 		pkt: the packet with header and utf8 encoded data
 	"""
@@ -103,20 +104,19 @@ def readDATApkt(pkt):
 	contents = [pkttype, seq, pktlen, src, Ndest, Rdest, dest1, dest2, dest3, data]
 	return contents
 
-def createACKpkt(src, dest):
+def createACKpkt(src, seq, dest):
 	"""
 	Creates ACK packet with fields specified below
-	Type(1) SEQ(1) SRC(1) DEST(1)
+	Type(1)|SEQ(1)|SRC(1)|DEST(1)
 	Type = 4, 1B (int)
 	SEQ generated randomly, 1B 0-254 (int)
 	Inputs: 
 		src: source address 1B 0-255 (int)
+		seq: Sequence number recived from previous packet 0-254 (int)
 		dest: destination address 1B 0-255 (int)
 	Outputs:
 		complete packet (bytes)
 	"""
-	seq = random.randint(0,254)
-	#why do we need this as a function.  Do we convert to utf-8?
 	return struct.pack('BBBB', 4, seq, src, dest)
 
 def readACK(pkt):
@@ -151,3 +151,4 @@ def read_pkt(pkt):
 		contents = readACK(pkt)
 	else:
 		pkt = None # will never happen
+	return contents
