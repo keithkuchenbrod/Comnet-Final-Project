@@ -17,6 +17,7 @@ class Router:
 		#self.ip = argv[2] Do we need this??
 		self.routing_table = None
         #To enable forwarding on the router
+        self.latest_lsu = {}  #stores sequence numbers of last recieved LSU packets from each node
         self.cmd( 'sysctl net.ipv4.ip_forward=1' )
         self.cmd( 'sysctl net.ipv4.icmp_echo_ignore_broadcasts=0' )
         self.cmd( 'sysctl net.ipv4.conf.r0-eth1.force_igmp_version=2' )
@@ -53,7 +54,15 @@ class Router:
 
     def createACKpkt(src, dest): #can be removed once packets.py is imported
 	    seq = random.randint(0,254)
-	    return struct.pack('BBBB', 4, seq, src, dest)
+	    return struct.pack('ACK', 4, seq, src, dest)
+
+    def readLSpkt(pkt): #can be removed once packets.py is imported
+	header = pkt[0:5]
+	data = pkt[5:].decode('utf-8')
+	webster = json.loads(data)
+	pkttype, seq, pktlen, src = struct.unpack('BBHB', header)
+	return [pkttype, seq, pktlen, src, webster]
+
 
     def run(self):
         sock=socket(AF_INET,SOCK_DGRAM)
@@ -63,9 +72,22 @@ class Router:
             header=read_header(packet)
             if header(0) == 'Hello':#ignore Hello Packets
                 continue
-            elif header(0) == 'LSU':
-                if header(2)==self.ip: #drop packet if sent from same router
+            if header(0) == 'ACK':
+                continue
+                pkt_info=self.readLSpkt(packet)
+                if
+                if pkt_info(3) == self.ip: #packet ignored if sent from same router
                     continue
+                if pkt_info(3) in latest_lsu:
+                    if latest_lsu[pkt_info(3)] == pkt_info(1):#seq number matches that of last packet recieved from that node
+                        continue
+                    else:
+                        latest_lsu[pkt_info(3)]=pkt_info(1)
+                else:
+
+                data=pkt_info(4)
+
+
             sock.send(self.createACKpkt(self.ip, addr))#send ack packet
                     
 
