@@ -64,9 +64,9 @@ class Router:
             if header(0) == 'Hello':#ignore Hello Packets
                 continue
             elif header(0) == 'LSU':
-                if header(2)==self.id: #drop packet if sent from same router
+                if header(2)==self.ip: #drop packet if sent from same router
                     continue
-            sock.send(self.createACKpkt(self.id, addr))#send ack packet
+            sock.send(self.createACKpkt(self.ip, addr))#send ack packet
                     
 
 
