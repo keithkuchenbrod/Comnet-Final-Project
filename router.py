@@ -3,6 +3,7 @@ import logging
 from sys import argv
 import os
 import json
+from jsonmerge import merge
 from mininet.topo import Topo
 from mininet.net import Mininet
 from mininet.node import Node
@@ -78,15 +79,15 @@ class Router:
             if pkt_info(3) == self.ip: #packet ignored if sent from current router
                 continue
             if pkt_info(3) in latest_lsu:#sending node has been heard from before
-                if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet's seq number matches that of last packet sent from sending router
+                if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet has been recieved before from same sender
                     continue
-                else:#new packet recived from sending node
-                    latest_lsu[pkt_info(3)]=pkt_info(1)
-                    data=pkt_info(4)
-                    self.routing_table.write(json.dumps(data))#updating routing table
             else:#sending node not heard from before
-                self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary
-                self.routing_table.write(json.dumps(data))#updating routing table
+                self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary with new node
+            #updating JSON dictionary
+            data=pkt_info(4)
+            old_data=json.load(f)
+            old_data.update(data)
+            json.dump(old_data,f)
             sock.send(self.createACKpkt(self.ip, pkt_info(1), addr))#send ack packet
                     
     if __name__=='__main__':
