@@ -17,7 +17,7 @@ class Router:
 		#self.ip = argv[2] Do we need this??
 		self.routing_table = None
         #To enable forwarding on the router
-        self.latest_lsu = {}  #stores sequence numbers of last recieved LSU packets from each node
+        self.latest_ls = {}  #stores sequence numbers of last recieved LS packets from each node
         self.cmd( 'sysctl net.ipv4.ip_forward=1' )
         self.cmd( 'sysctl net.ipv4.icmp_echo_ignore_broadcasts=0' )
         self.cmd( 'sysctl net.ipv4.conf.r0-eth1.force_igmp_version=2' )
@@ -52,7 +52,7 @@ class Router:
 	def bootstrap(self, network):
 		raise NotImplementedError
 
-    def createACKpkt(src, dest): #can be removed once packets.py is imported
+    def createACKpkt(src, seq, dest): #can be removed once packets.py is imported
 	    seq = random.randint(0,254)
 	    return struct.pack('ACK', 4, seq, src, dest)
 
@@ -67,30 +67,28 @@ class Router:
     def run(self):
         sock=socket(AF_INET,SOCK_DGRAM)
         sock.bind((self.ip,self.id))
-        while True:
+        while True:#listen for packets at the socket
             packet,addr=sock.recvfrom(self.buffer_size)
             header=read_header(packet)
             if header(0) == 'Hello':#ignore Hello Packets
                 continue
-            if header(0) == 'ACK':
+            if header(0) == 'ACK':#no response to ACK Packets
                 continue
-            pkt_info=self.readLSpkt(packet)#packet is either LSR or LSU
+            pkt_info=self.readLSpkt(packet)#it is an LS packet
             if pkt_info(3) == self.ip: #packet ignored if sent from current router
                 continue
-            if pkt_info(3) in latest_lsu:#sending router has been heard from before
-                if latest_lsu[pkt_info(3)] == pkt_info(1):#seq number matches that of last packet recieved from that node
+            if pkt_info(3) in latest_lsu:#sending node has been heard from before
+                if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet's seq number matches that of last packet sent from sending router
                     continue
-                else:
-                        latest_lsu[pkt_info(3)]=pkt_info(1)
-            else:#sending node not heard from before, updating routing table
-
-            data=pkt_info(4)
-
-
-            sock.send(self.createACKpkt(self.ip, addr))#send ack packet
+                else:#new packet recived from sending node
+                    latest_lsu[pkt_info(3)]=pkt_info(1)
+                    data=pkt_info(4)
+                    self.routing_table.write(json.dumps(data))#updating routing table
+            else:#sending node not heard from before
+                self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary
+                self.routing_table.write(json.dumps(data))#updating routing table
+            sock.send(self.createACKpkt(self.ip, pkt_info(1), addr))#send ack packet
                     
-
-
     if __name__=='__main__':
         router=Router()
         router.load_routing_table()
