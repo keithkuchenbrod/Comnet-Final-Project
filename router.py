@@ -74,18 +74,17 @@ class Router:
                 continue
             if header(0) == 'ACK':
                 continue
-                pkt_info=self.readLSpkt(packet)
-                if
-                if pkt_info(3) == self.ip: #packet ignored if sent from same router
+            pkt_info=self.readLSpkt(packet)#packet is either LSR or LSU
+            if pkt_info(3) == self.ip: #packet ignored if sent from current router
+                continue
+            if pkt_info(3) in latest_lsu:#sending router has been heard from before
+                if latest_lsu[pkt_info(3)] == pkt_info(1):#seq number matches that of last packet recieved from that node
                     continue
-                if pkt_info(3) in latest_lsu:
-                    if latest_lsu[pkt_info(3)] == pkt_info(1):#seq number matches that of last packet recieved from that node
-                        continue
-                    else:
-                        latest_lsu[pkt_info(3)]=pkt_info(1)
                 else:
+                        latest_lsu[pkt_info(3)]=pkt_info(1)
+            else:#sending node not heard from before, updating routing table
 
-                data=pkt_info(4)
+            data=pkt_info(4)
 
 
             sock.send(self.createACKpkt(self.ip, addr))#send ack packet
