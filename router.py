@@ -3,6 +3,8 @@ import logging
 from sys import argv
 import os
 import json
+from _thread import *
+from threading import Thread
 from jsonmerge import merge
 from mininet.topo import Topo
 from mininet.net import Mininet
@@ -64,34 +66,60 @@ class Router:
 	pkttype, seq, pktlen, src = struct.unpack('BBHB', header)
 	return [pkttype, seq, pktlen, src, webster]
 
+    def write_json(data, filename='routing_table.json'): 
+    with open(filename,'w') as f: 
+        json.dump(data, f, indent=4) 
 
-    def run(self):
-        sock=socket(AF_INET,SOCK_DGRAM)
-        sock.bind((self.ip,self.id))
-        while True:#listen for packets at the socket
-            packet,addr=sock.recvfrom(self.buffer_size)
-            header=read_header(packet)
-            if header(0) == 'Hello':#ignore Hello Packets
-                continue
-            if header(0) == 'ACK':#no response to ACK Packets
-                continue
-            pkt_info=self.readLSpkt(packet)#it is an LS packet
-            if pkt_info(3) == self.ip: #packet ignored if sent from current router
-                continue
-            if pkt_info(3) in latest_lsu:#sending node has been heard from before
-                if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet has been recieved before from same sender
+    class receive_thread(Thread):
+        def __init__(self,ip,interface):
+            Thread.__init__(self)
+            self.ip=ip
+            self.interface=interface
+            self.port=random.randint(1,1001)
+
+        def run(self):
+            sock=socket(AF_INET,SOCK_DGRAM)        
+            sock.bind((self.ip,port))
+            while True:#listen for packets at the socket
+                packet,addr=sock.recvfrom(self.buffer_size)
+                header=read_header(packet)
+                if header(0) == 'Hello':#ignore Hello Packets
                     continue
-            else:#sending node not heard from before
-                self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary with new node
-            #updating JSON dictionary
-            data=pkt_info(4)
-            old_data=json.load(f)
-            old_data.update(data)
-            json.dump(old_data,f)
-            sock.send(self.createACKpkt(self.ip, pkt_info(1), addr))#send ack packet
-                    
+                if header(0) == 'ACK':#no response to ACK Packets
+                    continue
+                pkt_info=self.readLSpkt(packet)#it is an LS packet
+                if pkt_info(3) == self.ip: #packet ignored if sent from current router
+                    continue
+                if pkt_info(3) in latest_lsu:#sending node has been heard from before
+                    if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet has been recieved before from same sender
+                        continue
+                else:#sending node not heard from before
+                    self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary with new node
+                #updating JSON dictionary
+                new_data=pkt_info(4)
+                with open('routing_tables.json','r+') as g:
+                    old_data=json.load(g)
+                    temp=old_data[self.id+'routing_table']
+                    temp.append(new_data)
+                write_json(old_data)
+                sock.send(self.createACKpkt(self.ip, pkt_info(1), addr))#send ack packet
+
+
+    def start_receiving():
+        recv_threads=[]
+        interfaces=[]
+        f=open('routing_tables.json',)
+        data=json.load(f)
+        for d in data:
+            if 'Iface' in d:
+                interfaces.append(d['Iface'])
+        for i in interfaces:
+            t=recv_thread(self.ip,i)
+            t.start()
+            recv_threads.append(t)
+       
     if __name__=='__main__':
         router=Router()
         router.load_routing_table()
         router.get_router_information
-        router.run()
+        router.start_receiving()
