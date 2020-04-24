@@ -1,23 +1,23 @@
 [
     {
         "Cost": 1, 
-        "Destination": "0.0.0.0", 
+        "Destination": "192.168.1.2", 
         "Destination_id": "r1", 
-        "Gateway": "0.0.0.0", 
+        "Gateway": "192.168.4.0", 
         "Iface": "r4-eth0"
     }, 
     {
         "Cost": 1, 
-        "Destination": "0.0.0.0", 
+        "Destination": "192.168.3.2", 
         "Destination_id": "r3", 
-        "Gateway": "0.0.0.0", 
+        "Gateway": "192.168.4.1", 
         "Iface": "r4-eth1"
     }, 
     {
         "Cost": 1, 
-        "Destination": "0.0.0.0", 
+        "Destination": "192.168.5.0", 
         "Destination_id": "r5", 
-        "Gateway": "0.0.0.0", 
+        "Gateway": "192.168.4.2", 
         "Iface": "r4-eth2"
     }
 ]

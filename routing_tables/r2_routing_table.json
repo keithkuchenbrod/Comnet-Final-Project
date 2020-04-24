@@ -1,16 +1,16 @@
 [
     {
         "Cost": 1, 
-        "Destination": "0.0.0.0", 
+        "Destination": "192.168.1.1", 
         "Destination_id": "r1", 
-        "Gateway": "0.0.0.0", 
+        "Gateway": "192.168.2.0", 
         "Iface": "r2-eth0"
     }, 
     {
         "Cost": 1, 
-        "Destination": "0.0.0.0", 
+        "Destination": "192.168.3.0", 
         "Destination_id": "r3", 
-        "Gateway": "0.0.0.0", 
+        "Gateway": "192.168.2.1", 
         "Iface": "r2-eth1"
     }
 ]
