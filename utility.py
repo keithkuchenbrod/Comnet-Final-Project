@@ -16,6 +16,7 @@ def ifconfig_parse(ifconfig, src, dest):
     :return: src and dest addresses
     """
     src_addr, dest_addr = '0.0.0.0', '0.0.0.0'
+    intf = None
     with open(ifconfig, 'r') as fp:
         line = fp.readlines()
         for idx in range(len(line)):
@@ -23,11 +24,11 @@ def ifconfig_parse(ifconfig, src, dest):
             if line[idx].find('-') is not -1:
                 intf = str(line[idx]).split(' ')[0]
 
-                if line[idx].find('inet') is not -1 and intf == src:
-                    src_addr = str(line[idx+1]).split(':')[1].split(' ')[0]
+            if line[idx].find('inet') is not -1 and intf == src:
+                src_addr = str(line[idx]).split(':')[1].split(' ')[0]
 
-                elif line[idx].find('inet') is not -1 and intf == dest:
-                    dest_addr = str(line[idx+1]).split(':')[1].split(' ')[0]
+            elif line[idx].find('inet') is not -1 and intf == dest:
+                dest_addr = str(line[idx]).split(':')[1].split(' ')[0]
 
     return src_addr, dest_addr
 
