@@ -1,7 +1,8 @@
 import json
 import logging
+import random
 
-def ifconfig_parse(ifconfig, src, dest):
+def ifconfig_parse(ifconfig, node_id):
     """ 
     Parse through ifconfig.txt file which is created from saving the node.cmd('ifconfig') command output
     the a text file
@@ -15,23 +16,33 @@ def ifconfig_parse(ifconfig, src, dest):
     :param ifconfig: ifconfig.txt
     :return: src and dest addresses
     """
-    src_addr, dest_addr = '0.0.0.0', '0.0.0.0'
-    intf = None
-    with open(ifconfig, 'r') as fp:
-        line = fp.readlines()
-        for idx in range(len(line)):
+    src_addr, dest_addr, port = '-', '-', '-'
+    intf, dict = None, []
+    string_iter = iter(ifconfig.splitlines())
 
-            if line[idx].find('-') is not -1:
-                intf = str(line[idx]).split(' ')[0]
+    for line in string_iter:
+        if line.find('-') is not -1:
+            intf = str(line).split(' ')[0]
 
-            if line[idx].find('inet') is not -1 and intf == src:
-                src_addr = str(line[idx]).split(':')[1].split(' ')[0]
+        elif str(line).split(' ')[0] == 'lo':
+            break
 
-            elif line[idx].find('inet') is not -1 and intf == dest:
-                dest_addr = str(line[idx]).split(':')[1].split(' ')[0]
+        if line.find('inet') is not -1 and intf.split('-')[0] == str(node_id):
+            src_addr = str(line).split(':')[1].split(' ')[0]
+            bcast = str(line).split(':')[2].split(' ')[0]
+            dict.append({'dest_id': '-', 'dest_addr': dest_addr,'dest_port': port, 'gateway': src_addr, 'iface':intf, 'bcast': bcast, 'cost': 1})
 
-    return src_addr, dest_addr
+        #Cannot assume that ifconfig contains info about neighbor node intf
+        #elif line.find('inet') is not -1 and intf == dest:
+            #dest_addr = str(line).split(':')[1].split(' ')[0]
 
+    with open('routing_tables/{}_routing_table.json'.format(node_id), 'w') as fp:
+        json.dump(dict, fp, sort_keys=True, indent=4)
+
+
+
+
+#Currently Not used will enventually delete
 def generate_routing_table(id, links, ifconfig):
     """ 
 
@@ -47,12 +58,12 @@ def generate_routing_table(id, links, ifconfig):
             src_addr, dest_addr = 'None', 'None'
 
             if intf1.split('-')[0] == id:
-                src_addr, dest_addr = ifconfig_parse(ifconfig, src=intf1, dest=intf2)
-                dict.append({'Destination_id': intf2.split('-')[0], 'Destination': dest_addr,'Gateway': src_addr, 'Iface':intf1, 'Cost': 1})
+                src_addr, bcast, dest_addr = ifconfig_parse(ifconfig, src=intf1, dest=intf2)
+                dict.append({'Destination_id': intf2.split('-')[0], 'Destination': dest_addr,'Gateway': src_addr, 'Iface':intf1, 'bcast': bcast, 'Cost': 1})
 
             elif intf2.split('-')[0] == id:
-                src_addr, dest_addr = ifconfig_parse(ifconfig, src=intf2, dest=intf1)
-                dict.append({'Destination_id': intf1.split('-')[0], 'Destination': dest_addr,'Gateway': src_addr, 'Iface':intf2, 'Cost': 1})
+                src_addr, bcast, dest_addr = ifconfig_parse(ifconfig, src=intf2, dest=intf1)
+                dict.append({'Destination_id': intf1.split('-')[0], 'Destination': dest_addr,'Gateway': src_addr, 'Iface':intf2, 'bcast': bcast, 'Cost': 1})
 
         with open('routing_tables/{}_routing_table.json'.format(id), 'w') as fp:
                 json.dump(dict, fp, sort_keys=True, indent=4)

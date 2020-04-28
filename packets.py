@@ -8,19 +8,21 @@ import struct
 import random
 import json
 
-def createHellopkt(src):
-	"""
+def createHellopkt(seq, SRC_ID):
+	""" 
 	Creates Hello packet with fields specified below
-	Type(1)|SEQ(1)|SRC(1)
+	Type(1)|SEQ(1)|SRC_ID(1)|ADDR_LEN|SRC_ADDR(1)|SRC_PORT(1)
 	Type = 0, 1B (int)
-	SEQ generated randomly, 1B 0-254 (int)
+	SEQ = 1 when receiver needs to send back, and 0 when sending back
 	Inputs:
-		src: Source address, 1B, 0-255 (int)
+		SENDER_ID: Sender id, 1B 0-255 (int)
+		SRC_ADDR: Source address, variable size, (String)
+		SRC_PORT: Source port, 4B (int)
 	Outputs:
-		pkt: complete packet (bytes)
+		pkt
 	"""
-	seq = random.randint(0,254)
-	return struct.pack('BBB', 0, seq, src)
+	#seq = random_randint(0, 254)
+	return struct.pack('BBB', 0, seq, int(SRC_ID))
 
 def readHello(pkt):
 	"""
@@ -30,8 +32,8 @@ def readHello(pkt):
 	Outputs:
 		[pkttype, seq, src]: fields of Hello packet (list)
 	"""
-	pkttype, seq, src = struct.unpack('BBB', pkt)
-	return [pkttype, seq, src]
+	pkttype, seq, SRC_ID = struct.unpack('BBB', pkt)
+	return [pkttype, seq, SRC_ID]
 
 def createLSpkt(src, webster):
 	"""
@@ -43,7 +45,6 @@ def createLSpkt(src, webster):
 		webster: json formatted dictionary of a specific routing table(dictionary)
 	Outputs:
 		pkt: complete packet(bytes)
-
 	"""
 	seq = random.randint(0,254)
 	data = json.dumps(webster) # json to string
@@ -90,7 +91,7 @@ def createDatapkt(src, Rdest, data, Ndest=1, dest1=0, dest2=0, dest3=0):
 	header = struct.pack('BBHBBBBBB', 3, seq, pktlen, src, Ndest, Rdest, dest1, dest2, dest3)
 	return header + bytes(data, 'utf-8')
 
-def readDATApkt(pkt):
+def readDatapkt(pkt):
 	"""
 	Reads Data packet specified in createDatapkt() function
 	Inputs:
@@ -140,7 +141,7 @@ def read_pkt(pkt):
 	Output:
 		contents: broken down contents of packet (list)
 	"""
-
+	contents = None
 	if pkt[0] == 0:
 		contents = readHello(pkt)
 	elif pkt[0] == 1:

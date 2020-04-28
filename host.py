@@ -1,39 +1,47 @@
 import logging
 from packets import *
-from socket import socket, AF_INET, SOCK_DGRAM
+from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_BROADCAST, SO_REUSEADDR, SO_REUSEPORT
 from sys import argv
+import random
+import os
 
 class Host:
 
 	def __init__(self, *args):
-		self.id = argv[1]
-		self.gateway = '0.0.0.0'
-		self.port = 3535
-		self.buffer_size = 1024
+		self.id = int(argv[1])
+		self.port = 8888
+		self.routing_table = []
 
-	def logger(self, info):
-		"""Saves info passed to a log file specific to the host"""
-		file_path = 'debug_logs/{}_debug.log'.format(self.id)
-		logging.basicConfig(filename=file_path, level=logging.INFO)
-		logging.info(info)
+	#Will probably delete this 
+	def load_routing_table(self):
+		"""Loads routing table for router from routing table json file"""
+		for file in os.listdir('routing_tables'):
+			if int(file.split('_')[0]) == self.id:
+				with open('routing_tables/{}'.format(self.id),'r') as fp:
+					self.routing_table = json.load(fp)
 
-	def run_source_host(self, k):
-		sock = socket(AF_INET, SOCK_DGRAM)
-		sock.bind((self.gateway,self.port))
+	def bootstrap(self):
+		#sock = socket(AF_INET, SOCK_DGRAM)
+		#sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
+		#gateway = self.routing_table[0]['gateway']
+		#sock.bind((gateway, self.port))
 
-		dest = 'r1' #Just here for testing
+		broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+		broadcast_sock.bind(('',8888))
+ 
+		packet, addr = broadcast_sock.recvfrom(1024)
+		contents = read_pkt(packet)
+		print('Received: {}\tFrom: {}'.format(packet, contents[2]))
+		logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
-		packet = createDatapkt(self.id, dest, 'Hello')
-		sock.sendto(packet, self.gateway)
-		
-		log_string = 'Sent packet: {}'.format(packet)
-		logger(log_string)
+		packet = createHellopkt(0, self.id)
+		broadcast_sock.sendto(packet, addr)
+		print('Sent: {}\tTo: {}'.format(packet, contents[2]))
+		logging.info('Sent: {}\tTo: {}'.format(packet, contents[2]))
 
-		sock.close()
-		self.run_host()
+		broadcast_sock.close()
 
-
-	def run_host(self):
+	def intf_listen(self):
 		"""Sets up socket and waits to recieve a packet
 
 		For the most part regular hosts that are not the main sender host only have to send/reply with
@@ -42,30 +50,44 @@ class Host:
 		*Note: stop and wait AQR not yet implented
 		"""
 		sock = socket(AF_INET, SOCK_DGRAM)
-		sock.bind((self.gateway, self.port))
+		sock.bind(('', self.port))
 
 		while True:
-			packet, addr = sock.recvfrom(self.buffer_size)
-			header = read_header(packet) #returns a tuple, header(0) is always the packet type
+			packet, addr = sock.recvfrom(1024)
+			contents = read_pkt(packet)
+			print('Receive: {}\tFrom: {}'.format(packet, contents[2]))
+			logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
-			#String for logging
-			log_string = 'Recieved packet: header: {}'.format(header)
-			self.logger(log_string)
-
-			#ACK packet (ack --> TYPE|SEQ|SRC|DEST
-			if header[0] != 4:
-				packet = createACKpkt(self.id, addr)
-				sock.sendto(packet, self.gateway)
-
-			#String for logging
-			log_string = 'Sent packet: {}'.format(packet)
-			self.logger(log_string)
-
+			#Idk if we should do handle the hellos like below for hosts 
+			if contents[0] == 0: #Hello
+				pass
+				#if contents[1] == 0:
+					#pass
+				#elif contents[1] == 1 and self.check_route(contents[2]) == False:
+					#packet = createHellopkt(0, self.id)
+					#sock.sendto(packet, addr)
+					#self.routing_table.append({'dest_id': contents[2], 'dest_addr': addr[0], 'dest_port': addr[1]})
+				#elif contents[1] == 1 and self.check_route(contents[2]) == True:
+					#packet = createHellopkt(0, self.id)
+					#sock.sendto(packet, addr)
+				#print('Sent: {}\tTo: {}'.format(packet, contents[2]))				
+			elif contents[0] == 1: #LS
+				pass
+			elif contents[0] == 3: #Data
+				pass
+			elif contents[0] == 4: #ACK
+				pass
+			#print(self.routing_table)
 		sock.close()
 
 if __name__ == '__main__':
 	host = Host()
-	if host.id == 's': #hosts with the id of 's' are source hosts (the host sending k out of n)
-		host.run_source_host(k=1)
-	else: 
-		host.run_host()
+	logging.basicConfig(filename='debug_logs/{}_debug.log'.format(host.id), level=logging.INFO)
+	if host.id == 101:
+		host.bootstrap()
+		host.intf_listen()
+	elif 101 < host.id < 200: 
+		host.bootstrap()
+		host.intf_listen()
+	else:
+		logging.info('Incorrect host id value, must be between 1 and 51')

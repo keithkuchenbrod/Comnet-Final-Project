@@ -1,125 +1,115 @@
-import socket
+from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_BROADCAST, SO_REUSEADDR, SO_REUSEPORT
 import logging
 from sys import argv
 import os
 import json
-from _thread import *
-from threading import Thread
-from jsonmerge import merge
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.node import Node
-from mininet.log import setLogLevel, info
-from mininet.cli import CLI
+from packets import *
+import random
+import time
 
 class Router:
 
-	def __init__(self, *args):
-		#ARGS[1:] --> id ip, argv[0] is the name of python file   
-		self.id = argv[1]
-		#self.ip = argv[2] Do we need this??
-		self.routing_table = None
-        #To enable forwarding on the router
-        self.latest_ls = {}  #stores sequence numbers of last recieved LS packets from each node
-        self.cmd( 'sysctl net.ipv4.ip_forward=1' )
-        self.cmd( 'sysctl net.ipv4.icmp_echo_ignore_broadcasts=0' )
-        self.cmd( 'sysctl net.ipv4.conf.r0-eth1.force_igmp_version=2' )
-        self.cmd( 'sysctl net.ipv4.conf.r0-eth2.force_igmp_version=2' )
-        self.cmd( 'sysctl net.ipv4.conf.r0-eth3.force_igmp_version=2' )
-        self.cmd( '/opt/smcroute/sbin/smcrouted -l debug -I smcroute-r0' )
-        self.cmd( 'sleep 1')
-        self.cmd( '/opt/smcroute/sbin/smcroutectl -I smcroute-r0 '
-                  'add r0-eth1 239.0.0.1 r0-eth2 r0-eth3' )
-        self.cmd( '/opt/smcroute/sbin/smcroutectl -I smcroute-r0 '
-                  'add r0-eth2 239.0.0.2 r0-eth1 r0-eth3' )
-        self.cmd( '/opt/smcroute/sbin/smcroutectl -I smcroute-r0 '
-                  'add r0-eth3 239.0.0.3 r0-eth1 r0-eth2' )
+    def __init__(self, *args):
+        self.id = int(argv[1])
+        self.routing_table = []
+        self.port = 8888
+        self.bcast = '192.168.1.255'
 
-	def get_router_information(self):
-		"""Logs routing information in debug.log file"""
-		logging.basicConfig(filename='debug.log',level=logging.INFO)
-		logging.info('Node id: {}\tNode ip: {}\tRouting table: {}'.format(self.id, self.ip, self.routing_table))
+    def check_route(self, sender_id):
+        """Checks routing table to see if there is a route to the sender_id"""
+        for route_idx in range(len(self.routing_table)):
+            dest_id = self.routing_table[route_idx]['dest_id']
+            if dest_id == sender_id:
+                return True
+        return False
 
-	def load_routing_table(self):
-		"""Loads routing table for router from routing table json file"""
-		logging.basicConfig(filename='debug.log',level=logging.INFO)
-		for file in os.listdir('routing_tables'):
-			if file.split('_')[0] == self.id:
-				with open('routing_tables/{}'.format(file), 'r') as fp:
-					self.routing_table = json.load(fp)
-
-    def terminate(self):
-        self.cmd( 'sysctl net.ipv4.ip_forward=0' )
-        self.cmd( '/opt/smcroute/sbin/smcroutectl -I smcroute-r0 kill' )
-
-	def bootstrap(self, network):
-		raise NotImplementedError
-
-    def createACKpkt(src, seq, dest): #can be removed once packets.py is imported
-	    seq = random.randint(0,254)
-	    return struct.pack('ACK', 4, seq, src, dest)
-
-    def readLSpkt(pkt): #can be removed once packets.py is imported
-	header = pkt[0:5]
-	data = pkt[5:].decode('utf-8')
-	webster = json.loads(data)
-	pkttype, seq, pktlen, src = struct.unpack('BBHB', header)
-	return [pkttype, seq, pktlen, src, webster]
-
-    def write_json(data, filename='routing_table.json'): 
-    with open(filename,'w') as f: 
-        json.dump(data, f, indent=4) 
-
-    class receive_thread(Thread):
-        def __init__(self,ip,interface):
-            Thread.__init__(self)
-            self.ip=ip
-            self.interface=interface
-            self.port=random.randint(1,1001)
-
-        def run(self):
-            sock=socket(AF_INET,SOCK_DGRAM)        
-            sock.bind((self.ip,port))
-            while True:#listen for packets at the socket
-                packet,addr=sock.recvfrom(self.buffer_size)
-                header=read_header(packet)
-                if header(0) == 'Hello':#ignore Hello Packets
-                    continue
-                if header(0) == 'ACK':#no response to ACK Packets
-                    continue
-                pkt_info=self.readLSpkt(packet)#it is an LS packet
-                if pkt_info(3) == self.ip: #packet ignored if sent from current router
-                    continue
-                if pkt_info(3) in latest_lsu:#sending node has been heard from before
-                    if latest_lsu[pkt_info(3)] == pkt_info(1):#this packet has been recieved before from same sender
-                        continue
-                else:#sending node not heard from before
-                    self.latest_ls.update(pkt.info(3),pkt.info(1))#updating the dictionary with new node
-                #updating JSON dictionary
-                new_data=pkt_info(4)
-                with open('routing_tables.json','r+') as g:
-                    old_data=json.load(g)
-                    temp=old_data[self.id+'routing_table']
-                    temp.append(new_data)
-                write_json(old_data)
-                sock.send(self.createACKpkt(self.ip, pkt_info(1), addr))#send ack packet
-
-
-    def start_receiving():
-        recv_threads=[]
-        interfaces=[]
-        f=open('routing_tables.json',)
-        data=json.load(f)
-        for d in data:
-            if 'Iface' in d:
-                interfaces.append(d['Iface'])
-        for i in interfaces:
-            t=recv_thread(self.ip,i)
-            t.start()
-            recv_threads.append(t)
+    def bootstrap(self):
+        """Creates two sockets:
+        sock: This is the main sock to be used on the intf
+        broadcast_sock: This is used to send out a broadcast message to subnets. It allows
+        for the current router to discover its neighbors addr and the port its socket is
+        listening on
+        param route_idx: Index in the routing table for a specific intf
+        """ 
+        broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+        broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST,1)
+        broadcast_sock.settimeout(0.2)
+        #broadcast_sock.bind(('192.168.1.8',8888))
+        packet = createHellopkt(1, self.id)
+        broadcast_sock.sendto(packet, (self.bcast, 8888))
        
-    if __name__=='__main__':
-        router=Router()
-        router.load_routing_table()
-        router.get_router_information
-        router.start_receiving()
+        print('Sent: {}\tTo: {}'.format(packet, '{}, 8888'.format(self.bcast)))
+        logging.info('Sent: {}\tTo: {}'.format(packet, '{}, 8888'.format(self.bcast)))
+       
+        routes = []
+        while True:
+            try:
+                packet, addr = broadcast_sock.recvfrom(1024)
+                contents = read_pkt(packet)
+                
+                print('Received: {}\tFrom: {}'.format(packet, contents[2]))
+                logging.info('Recieved: {}\tFrom: {}'.format(packet, contents[2]))
+       
+                if contents[1] == 0:    
+                    routes.append({'dest_id': contents[2], 'dest_addr': addr[0], 'dest_port': addr[1]})
+
+            except OSError:
+                print('Timeout')
+                break
+        self.routing_table = routes
+        print(self.routing_table)
+        print('{} finished booting'.format(self.id))
+        broadcast_sock.close()
+
+    def intf_listen(self):
+        print('Listening on all interfaces')
+        sock = socket(AF_INET, SOCK_DGRAM)
+        sock.bind(('',self.port))
+
+        contents = None
+        while True:
+            packet, addr = sock.recvfrom(1024)
+            contents = read_pkt(packet)
+            print('Received: {}\tFrom: {}'.format(packet, contents[2]))
+            logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
+
+            if contents[0] == 0:   #Hello
+                if contents[1] == 0:
+                    pass
+                elif contents[1] == 1 and self.check_route(contents[2]) == False:
+                    packet = createHellopkt(0, self.id)
+                    sock.sendto(packet, addr)
+                    self.routing_table.append({'dest_id': contents[2], 'dest_addr': addr[0], 'dest_port': addr[1]})
+                elif contents[1] == 1 and self.check_route(contents[2]) == True:
+                    packet = createHellopkt(0, self.id)
+                    sock.sendto(packet, addr)    
+                print('Sent: {}\tTo: {}'.format(packet, contents[2]))
+
+            elif contents[0] == 1: #LS
+                pass
+
+            elif contents[0] == 3: #Data
+                src, seq, dest = contents[3], contents[1], contents[5]
+                dest_addr = self.get_addr(dest)
+                if dest_addr is not -1:
+                    packet = createACKpkt(src, seq, dest)
+                    sock.sendto(packet, (dest_addr, 3535)) #port is dest ports number
+                    logging.info('Sent: {}\tTo: {}'.format(packet, dest))
+            elif contents[0] == 4: #ACK
+                pass
+
+            else:
+                pass
+            print(self.routing_table)
+        sock.close()
+
+if __name__=='__main__':
+    router=Router()
+    logging.basicConfig(filename='debug_logs/{}_debug.log'.format(router.id), level=logging.INFO)
+    router.bootstrap()
+    router.intf_listen()
+
+
+
+
+
