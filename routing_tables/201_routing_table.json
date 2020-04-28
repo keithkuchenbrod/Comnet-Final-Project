@@ -1,0 +1,14 @@
+[
+    {
+        "cost": 1,
+        "dest_addr": "192.168.1.1",
+        "dest_id": 101,
+        "dest_port": 8888
+    },
+    {
+        "cost": 1,
+        "dest_addr": "192.168.1.5",
+        "dest_id": 202,
+        "dest_port": 8888
+    }
+]

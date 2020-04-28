@@ -1,0 +1,29 @@
+[
+    {
+        "bcast": "192.168.1.255", 
+        "cost": 1, 
+        "dest_addr": "-", 
+        "dest_id": "-", 
+        "dest_port": "-", 
+        "gateway": "192.168.1.16", 
+        "iface": "206-eth0"
+    }, 
+    {
+        "bcast": "192.168.1.255", 
+        "cost": 1, 
+        "dest_addr": "-", 
+        "dest_id": "-", 
+        "dest_port": "-", 
+        "gateway": "192.168.1.17", 
+        "iface": "206-eth1"
+    }, 
+    {
+        "bcast": "192.168.1.255", 
+        "cost": 1, 
+        "dest_addr": "-", 
+        "dest_id": "-", 
+        "dest_port": "-", 
+        "gateway": "192.168.1.18", 
+        "iface": "206-eth2"
+    }
+]

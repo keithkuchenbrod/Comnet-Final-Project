@@ -11,6 +11,7 @@ class Host:
 		self.id = int(argv[1])
 		self.port = 8888
 		self.routing_table = []
+		self.server = None
 
 	#Will probably delete this 
 	def load_routing_table(self):
@@ -20,16 +21,16 @@ class Host:
 				with open('routing_tables/{}'.format(self.id),'r') as fp:
 					self.routing_table = json.load(fp)
 
-	def bootstrap(self):
-		#sock = socket(AF_INET, SOCK_DGRAM)
-		#sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
-		#gateway = self.routing_table[0]['gateway']
-		#sock.bind((gateway, self.port))
+	def update_routing_table(self): 
+		with open('routing_tables/{}_routing_table.json'.format(str(self.id)), 'w') as fp:
+			json.dumps(self.routing_table, fp, sort_keys=True, indent=4)
 
+	def bootstrap(self):
 		broadcast_sock = socket(AF_INET, SOCK_DGRAM)
 		broadcast_sock.bind(('',8888))
  
 		packet, addr = broadcast_sock.recvfrom(1024)
+		self.server = addr
 		contents = read_pkt(packet)
 		print('Received: {}\tFrom: {}'.format(packet, contents[2]))
 		logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
@@ -41,6 +42,19 @@ class Host:
 
 		broadcast_sock.close()
 
+	def send_to_k_dest(self, k, rdest, data): #rdest is a temp parameter
+		sock = socket(AF_INET, SOCK_DGRAM)
+		sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
+		sock.bind(('',self.port))
+		if int(k) == 1:
+			packet = createDatapkt(self.id, int(rdest), data)
+			sock.sendto(packet, self.server)
+		elif 1 < int(k) < 4:
+			pass
+		else: 
+			print('Error: k can only be 1, 2, 3')
+		sock.close()
+
 	def intf_listen(self):
 		"""Sets up socket and waits to recieve a packet
 
@@ -50,6 +64,7 @@ class Host:
 		*Note: stop and wait AQR not yet implented
 		"""
 		sock = socket(AF_INET, SOCK_DGRAM)
+		sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 		sock.bind(('', self.port))
 
 		while True:
@@ -83,11 +98,22 @@ class Host:
 if __name__ == '__main__':
 	host = Host()
 	logging.basicConfig(filename='debug_logs/{}_debug.log'.format(host.id), level=logging.INFO)
+
 	if host.id == 101:
 		host.bootstrap()
+		user_input = input('Enter send to start:')
+
+		if user_input == 'send':
+			data = 'Hello'
+			k = input('Enter value of k (1, 2 or 3):')
+			dest = input('Enter destination: ') #temp
+			host.send_to_k_dest(k, dest, data)
+
 		host.intf_listen()
+
 	elif 101 < host.id < 200: 
 		host.bootstrap()
 		host.intf_listen()
+
 	else:
 		logging.info('Incorrect host id value, must be between 1 and 51')
