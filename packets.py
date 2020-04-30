@@ -65,7 +65,7 @@ def readLSpkt(pkt):
 	data = pkt[5:].decode('utf-8')
 	webster = json.loads(data)
 	pkttype, seq, pktlen, src = struct.unpack('BBHB', header)
-	return [pkttype, seq, pktlen, src, webster]
+	return [pkttype, seq, src, pktlen, webster]
 
 def createDatapkt(src, Rdest, data, Ndest=1, dest1=0, dest2=0, dest3=0):
 	"""
@@ -102,7 +102,7 @@ def readDatapkt(pkt):
 	header = pkt[0:10]
 	pkttype, seq, pktlen, src, Ndest, Rdest, dest1, dest2, dest3 = struct.unpack('BBHBBBBBB', header)
 	data = pkt[10:].decode('utf-8')
-	contents = [pkttype, seq, pktlen, src, Ndest, Rdest, dest1, dest2, dest3, data]
+	contents = [pkttype, seq, src, pktlen, Ndest, Rdest, dest1, dest2, dest3, data]
 	return contents
 
 def createACKpkt(src, seq, dest):
@@ -145,7 +145,7 @@ def read_pkt(pkt):
 	if pkt[0] == 0:
 		contents = readHello(pkt)
 	elif pkt[0] == 1:
-		contents = readLS(pkt)
+		contents = readLSpkt(pkt)
 	elif pkt[0] == 3:
 		contents = readDatapkt(pkt)
 	elif pkt[0] == 4:
