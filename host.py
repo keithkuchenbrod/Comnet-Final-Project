@@ -27,6 +27,7 @@ class Host:
 
 	def bootstrap(self):
 		broadcast_sock = socket(AF_INET, SOCK_DGRAM)
+		broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 		broadcast_sock.bind(('',8888))
  
 		packet, addr = broadcast_sock.recvfrom(1024)
@@ -53,6 +54,11 @@ class Host:
 			pass
 		else: 
 			print('Error: k can only be 1, 2, 3')
+
+		print('Listening')
+		packet, addr = sock.recvfrom(1024)
+		contents = read_pkt(packet)
+		print('Received: {}\tFrom: {}'.format(packet, contents[2])) 
 		sock.close()
 
 	def intf_listen(self):
@@ -101,15 +107,17 @@ if __name__ == '__main__':
 
 	if host.id == 101:
 		host.bootstrap()
-		user_input = input('Enter send to start:')
-
-		if user_input == 'send':
-			data = 'Hello'
-			k = input('Enter value of k (1, 2 or 3):')
-			dest = input('Enter destination: ') #temp
-			host.send_to_k_dest(k, dest, data)
-
-		host.intf_listen()
+		while True:
+			user_input = input('Enter send or stop: ' )
+			if user_input == 'send':
+				data = 'Hello'
+				k = input('Enter value of k (1, 2 or 3): ')
+				dest = input('Enter destination: ') #temp
+				host.send_to_k_dest(k, dest, data)
+			elif user_input == 'stop':
+				break
+		print('Source host stopped')
+		#host.intf_listen()
 
 	elif 101 < host.id < 200: 
 		host.bootstrap()
