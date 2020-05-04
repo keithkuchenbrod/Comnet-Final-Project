@@ -12,6 +12,7 @@ class Host:
 		self.port = 8888
 		self.routing_table = []
 		self.server = None
+		self.buffer_size = 8000
 
 	#Will probably delete this 
 	def load_routing_table(self):
@@ -33,7 +34,7 @@ class Host:
 		except Exception as e:
 			print(e)
  
-		packet, addr = broadcast_sock.recvfrom(1024)
+		packet, addr = broadcast_sock.recvfrom(self.buffer_size)
 		self.server = addr
 		contents = read_pkt(packet)
 		print('Received: {}\tFrom: {}'.format(packet, contents[2]))
@@ -46,22 +47,32 @@ class Host:
 
 		broadcast_sock.close()
 
-	def send_to_k_dest(self, k, rdest, data): #rdest is a temp parameter
+	def force_ls_update(self, rdest, data): #rdest is a temp parameter
+		sock = socket(AF_INET, SOCK_DGRAM)
+		#sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
+		sock.bind(('',self.port))
+
+		packet = createDatapkt(self.id, data, Rdest=int(rdest))
+		sock.sendto(packet, self.server)
+
+		print('Listening')
+		packet, addr = sock.recvfrom(self.buffer_size)
+		contents = read_pkt(packet)
+		print('Received: {}\tFrom: {}'.format(packet, contents[2])) 
+		sock.close()
+
+	def send_to_k_dest(self, k, data): 
 		sock = socket(AF_INET, SOCK_DGRAM)
 		sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
 		sock.bind(('',self.port))
-		if int(k) == 1:
-			packet = createDatapkt(self.id, int(rdest), data)
-			sock.sendto(packet, self.server)
-		elif 1 < int(k) < 4:
-			pass
-		else: 
-			print('Error: k can only be 1, 2, 3')
+
+		packet = createDatapkt(self.id, data, Ndest=int(k))
+		sock.sendto(packet, self.server)
 
 		print('Listening')
-		packet, addr = sock.recvfrom(1024)
+		packet, addr = sock.recvfrom(self.buffer_size)
 		contents = read_pkt(packet)
-		print('Received: {}\tFrom: {}'.format(packet, contents[2])) 
+		print('Received: {}\tFrom: {}'.format(packet, contents[2]))
 		sock.close()
 
 	def intf_listen(self):
@@ -77,7 +88,7 @@ class Host:
 		sock.bind(('', self.port))
 
 		while True:
-			packet, addr = sock.recvfrom(1024)
+			packet, addr = sock.recvfrom(self.buffer_size)
 			contents = read_pkt(packet)
 			print('Receive: {}\tFrom: {}'.format(packet, contents[2]))
 			logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
@@ -110,15 +121,29 @@ if __name__ == '__main__':
 
 	if host.id == 101:
 		host.bootstrap()
+
+		#Part of bootstrap to update routing tables with all nodes in network
+		user_input = input('Enter start to give unkown destination to force routing update: ' )
 		while True:
-			user_input = input('Enter send or stop: ' )
+			if user_input == 'start':
+				data = 'Hello'
+				dest = input('Enter destination: ') #temp
+				host.force_ls_update(dest, data)
+				break
+			else:
+				print('Please input start')
+
+		#Start the multicast process
+		while True:
+			user_input = input('Input send or stop: ')
 			if user_input == 'send':
 				data = 'Hello'
 				k = input('Enter value of k (1, 2 or 3): ')
-				dest = input('Enter destination: ') #temp
-				host.send_to_k_dest(k, dest, data)
+				host.send_to_k_dest(k, data)
 			elif user_input == 'stop':
-				break
+				break	
+					
+	
 		print('Source host stopped')
 		#host.intf_listen()
 

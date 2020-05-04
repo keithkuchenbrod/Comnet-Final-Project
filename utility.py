@@ -30,7 +30,7 @@ def ifconfig_parse(ifconfig, node_id):
         if line.find('inet') is not -1 and intf.split('-')[0] == str(node_id):
             src_addr = str(line).split(':')[1].split(' ')[0]
             bcast = str(line).split(':')[2].split(' ')[0]
-            dict.append({'dest_id': '-', 'dest_addr': dest_addr,'dest_port': port, 'gateway': src_addr, 'iface':intf, 'bcast': bcast, 'cost': 1})
+            dict.append({"dest_id": "-", "dest_addr": dest_addr,"dest_port": port, "gateway": src_addr, "iface":intf, "bcast": bcast, "cost": 1})
 
         #Cannot assume that ifconfig contains info about neighbor node intf
         #elif line.find('inet') is not -1 and intf == dest:

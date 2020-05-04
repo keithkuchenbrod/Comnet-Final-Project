@@ -7,6 +7,7 @@ import json
 from packets import *
 import random
 import time
+import numpy as np
 
 class Router:
 
@@ -38,6 +39,13 @@ class Router:
                 return 0 
         return None
 
+    def pick_k_closest_hosts(self, k):
+        hosts = np.asarray([route for route in self.routing_table if 101 < int(route['dest_id']) < 200])
+        host_costs = np.asarray([route['cost'] for route in hosts])
+        host_cost_idx = host_costs.argsort()[:k]
+        print(host_cost_idx)
+        return np.asarray(hosts[host_cost_idx])
+         
     def update_routing_table(self, new_table, src, src_addr):
 
         for new_route in new_table:
@@ -186,25 +194,44 @@ class Router:
                 #    continue
 
             elif contents[0] == 3: #Data
-                src, seq, dest = contents[2], contents[1], contents[5]
-                dest_addr = self.is_route(dest)
+                src, seq, dest, Ndest = contents[2], contents[1], contents[5], contents[4]
+                if dest != 0: 
+                    dest_addr = self.is_route(dest)
 
-                if dest_addr == 0: #pkt reached destination
+                    if dest_addr == 0: #pkt reached destination
+                        ack_packet = createACKpkt(self.id, seq, src)
+                        sock.sendto(ack_packet, addr)
+
+                    elif dest_addr is not None:
+                        #Make and send ack back to sender
+                        ack_packet = createACKpkt(self.id, seq, src)
+                        sock.sendto(ack_packet, addr) 
+                   
+                        #Forward data packet to destination
+                        sock.sendto(packet, dest_addr)
+
+                    elif dest_addr is None:
+                        #Forces routing update
+                        sock.close()
+                        self.ls_broadcast()
+                elif dest == 0:
+                    #Make and send ack back to sender
                     ack_packet = createACKpkt(self.id, seq, src)
                     sock.sendto(ack_packet, addr)
 
-                elif dest_addr is not None:
-                    #Make and send ack back to sender
-                    ack_packet = createACKpkt(self.id, seq, src)
-                    sock.sendto(ack_packet, addr) 
-                   
-                    #Forward data packet to destination
-                    sock.sendto(packet, dest_addr)
+                    #Copy and send packet to k lowest destinations only hosts
+                    dest_routes = self.pick_k_closest_hosts(Ndest)
+                    data = contents[9]
+                    print(dest_routes)
+                    for route in dest_routes:
+                        packet = createDatapkt(src, data, Rdest=route['dest_id'])
+                        sock.sendto(packet, (route['dest_addr'],route['dest_port']))
+                        print('Sent: {}\t To: {}'.format(packet, route['dest_id']))
 
-                elif dest_addr is None:
-                    #Forces routing update
-                    sock.close()
-                    self.ls_broadcast()
+                        #Wait to recv ack
+                        packet, addr = sock.recvfrom(self.buffer_size)
+                        contents = read_pkt(packet)
+                        print('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
             elif contents[0] == 4: #ACK
                 pass
