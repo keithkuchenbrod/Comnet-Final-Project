@@ -28,7 +28,10 @@ class Host:
 	def bootstrap(self):
 		broadcast_sock = socket(AF_INET, SOCK_DGRAM)
 		broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-		broadcast_sock.bind(('',8888))
+		try:
+			broadcast_sock.bind(('',8888))
+		except Exception as e:
+			print(e)
  
 		packet, addr = broadcast_sock.recvfrom(1024)
 		self.server = addr
