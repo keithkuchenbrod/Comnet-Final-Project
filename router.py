@@ -14,6 +14,7 @@ class Router:
         self.id = int(argv[1])
         self.routing_table = []
         self.port = 8888
+        self.buffer_size = 8000
 
     def check_route(self, sender_id):
         """Checks routing table to see if there is a route to the sender_id"""
@@ -49,10 +50,10 @@ class Router:
              
             if found_dest == False:
                 dest_addr = self.is_route(src)
-                self.routing_table.append({'dest_id': new_route['dest_id'], 'dest_addr': dest_addr[0], 'dest_port': new_route['dest_port'], 'gateway': '-', 'iface':'-', 'bcast':'-', 'cost': 1+new_route['cost']})
+                self.routing_table.append({"dest_id": new_route['dest_id'], "dest_addr": dest_addr[0], "dest_port": new_route['dest_port'], "gateway": "-", "iface":"-", "bcast": "-", "cost": 1+new_route['cost']})
 
             if found_neighbor == False:
-                self.routing_table.append({'dest_id': src, 'dest_addr': src_addr[0], 'dest_port': src_addr[1], 'gateway': '-', 'iface':'-', 'bcast':'-', 'cost': 1})
+                self.routing_table.append({"dest_id": src, "dest_addr": src_addr[0], "dest_port": src_addr[1], "gateway": "-", "iface": "-", "bcast":"-", "cost": 1})
 
         self.save_routing_table()
 
@@ -84,9 +85,15 @@ class Router:
                 broadcast_sock.sendto(packet, (self.routing_table[x]['bcast'], self.port))
                 print('Iface: {}\tSent: {}\tTo: {}'.format(self.routing_table[x]['iface'], packet, '{}, 8888'.format(self.routing_table[x]['bcast'])))
 
-                packet, addr = broadcast_sock.recvfrom(1024)
+                
+                packet, addr = broadcast_sock.recvfrom(self.buffer_size)
                 contents = read_pkt(packet)
                 
+                #If recv from self then try again until socket times out
+                while contents[2] == self.id:
+                    packet, addr = broadcast_sock.recvfrom(self.buffer_size)
+                    contents = read_pkt(packet)
+
                 print('Received: {}\tFrom: {}'.format(packet, contents[2]))
        
                 if contents[1] == 0 and contents[2] is not self.id:    
@@ -97,7 +104,6 @@ class Router:
                 continue
 
         self.save_routing_table()
-        #print(self.routing_table)
         print('{} finished booting'.format(self.id))
         broadcast_sock.close()
 
@@ -113,21 +119,22 @@ class Router:
         initial_rt_length = sum([1 for route in self.routing_table if route['iface'] is not '-'])
         for x in range(initial_rt_length):
             try:
+                #25 is int code for SO_BINDTODEVICE
                 broadcast_sock.setsockopt(SOL_SOCKET, 25, self.routing_table[x]['iface'].encode('utf-8'))
                 packet = createLSpkt(self.id, self.routing_table)
                 broadcast_sock.sendto(packet, (self.routing_table[x]['bcast'], self.port))
                 print('Iface: {}\tTo: {}'.format(self.routing_table[x]['iface'], '{}, 8888'.format(self.routing_table[x]['bcast'])))
 
-                packet,addr = broadcast_sock.recvfrom(1024)
-                contents = read_pkt(packet)
-                self.update_routing_table(contents[4], contents[2], addr) #received table, src
+                #packet,addr = broadcast_sock.recvfrom(self.buffer_size)
+                #contents = read_pkt(packet)
+                #self.update_routing_table(contents[4], contents[2], addr) #received table, src
 
             except OSError as e:
                 continue
 
-        if len(temp_routing_table) is not len(self.routing_table):
-            broadcast_sock.close()
-            self.ls_broadcast()
+        #if len(temp_routing_table) is not len(self.routing_table):
+        #    broadcast_sock.close()
+        #    self.ls_broadcast()
 
         broadcast_sock.close()
         self.intf_listen()
@@ -136,12 +143,11 @@ class Router:
         print('Listening on all interfaces')
         sock = socket(AF_INET, SOCK_DGRAM)
         sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1) #To send broadcasts using bcast addr for LS
-        #sock.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         sock.bind(('',self.port))
 
         contents = None
         while True:
-            packet, addr = sock.recvfrom(1024)
+            packet, addr = sock.recvfrom(self.buffer_size)
             contents = read_pkt(packet)
             print('Received: {}\tFrom: {}'.format(packet, contents[2]))
             logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
@@ -153,7 +159,7 @@ class Router:
                 elif contents[1] == 1 and self.check_route(contents[2]) == False:
                     packet = createHellopkt(0, self.id)
                     sock.sendto(packet, addr)
-                    self.routing_table.append({'dest_id': contents[2], 'dest_addr': addr[0], 'dest_port': addr[1], 'gateway': '-', 'iface':'-', 'bcast':'-', 'cost': 1})
+                    self.routing_table.append({"dest_id": contents[2], "dest_addr": addr[0], "dest_port": addr[1], "gateway": "-", "iface":"-", "bcast":"-", "cost": 1})
                     self.save_routing_table()
 
                 elif contents[1] == 1 and self.check_route(contents[2]) == True:
@@ -166,14 +172,18 @@ class Router:
                 temp_routing_table = len(self.routing_table)
                 self.update_routing_table(contents[4], contents[2], addr) #received table, src
 
-                print(self.routing_table)
+                #Random delay before ls_broadcasting
+                time.sleep(random.random())
+
+                #sock.close()
+                #self.ls_broadcast()
                 if temp_routing_table is not len(self.routing_table):
                     #If something gets updated it triggers a routing update
                     sock.close()
                     self.ls_broadcast()
 
-                else:
-                    continue
+                #else:
+                #    continue
 
             elif contents[0] == 3: #Data
                 src, seq, dest = contents[2], contents[1], contents[5]
