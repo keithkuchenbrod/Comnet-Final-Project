@@ -5,7 +5,7 @@
         "dest_addr": "-", 
         "dest_id": "-", 
         "dest_port": "-", 
-        "gateway": "192.168.1.12", 
+        "gateway": "192.168.1.11", 
         "iface": "204-eth0"
     }, 
     {
@@ -14,7 +14,7 @@
         "dest_addr": "-", 
         "dest_id": "-", 
         "dest_port": "-", 
-        "gateway": "192.168.1.11", 
+        "gateway": "192.168.1.12", 
         "iface": "204-eth1"
     }, 
     {
