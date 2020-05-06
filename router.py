@@ -40,7 +40,14 @@ class Router:
         return None
 
     def pick_k_closest_hosts(self, k):
-        hosts = np.asarray([route for route in self.routing_table if 101 < int(route['dest_id']) < 200])
+        hosts = []
+        #hosts = np.asarray([route for route in self.routing_table if 101 < int(route['dest_id']) < 200])
+        for route in self.routing_table:
+            if route['dest_id'] is not '-':
+                if 101 < int(route['dest_id']) < 200:
+                    hosts.append(route)
+        print(hosts)
+        hosts = np.asarray(hosts)
         host_costs = np.asarray([route['cost'] for route in hosts])
         host_cost_idx = host_costs.argsort()[:k]
         print(host_cost_idx)
