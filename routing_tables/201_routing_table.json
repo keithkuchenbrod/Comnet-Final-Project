@@ -65,7 +65,7 @@
     {
         "bcast": "-",
         "cost": 3,
-        "dest_addr": "192.168.1.11",
+        "dest_addr": "192.168.1.5",
         "dest_id": 102,
         "dest_port": 8888,
         "gateway": "-",

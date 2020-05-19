@@ -14,19 +14,23 @@ class Host:
 		self.server = None
 		self.buffer_size = 8000
 
-	#Will probably delete this 
 	def load_routing_table(self):
-		"""Loads routing table for router from routing table json file"""
+		#Loads routing table for router from routing table json file
 		for file in os.listdir('routing_tables'):
 			if int(file.split('_')[0]) == self.id:
 				with open('routing_tables/{}'.format(self.id),'r') as fp:
 					self.routing_table = json.load(fp)
 
 	def update_routing_table(self): 
+		#Overwrites old routing table
 		with open('routing_tables/{}_routing_table.json'.format(str(self.id)), 'w') as fp:
 			json.dumps(self.routing_table, fp, sort_keys=True, indent=4)
 
 	def bootstrap(self):
+		""" 
+		Listens on port 8888 through all interfaces to receive a packet.
+		This packet will be a Hello packet coming from a neighboring router
+		"""
 		broadcast_sock = socket(AF_INET, SOCK_DGRAM)
 		broadcast_sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 		try:
@@ -38,18 +42,20 @@ class Host:
 		self.server = addr
 		contents = read_pkt(packet)
 		print('Received: {}\tFrom: {}'.format(packet, contents[2]))
-		logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
 		packet = createHellopkt(0, self.id)
 		broadcast_sock.sendto(packet, addr)
 		print('Sent: {}\tTo: {}'.format(packet, contents[2]))
-		logging.info('Sent: {}\tTo: {}'.format(packet, contents[2]))
 
 		broadcast_sock.close()
 
-	def force_ls_update(self, rdest, data): #rdest is a temp parameter
+	def force_ls_update(self, rdest, data):
+		""" 
+		This function is used to force a ls update when the network is completly setup.
+		The forced update happens because the source host tries to send a packet to a destination
+		that its neighboring router does not have in its routing table from the bootstrap process
+		"""
 		sock = socket(AF_INET, SOCK_DGRAM)
-		#sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
 		sock.bind(('',self.port))
 
 		packet = createDatapkt(self.id, data, Rdest=int(rdest))
@@ -61,7 +67,12 @@ class Host:
 		print('Received: {}\tFrom: {}'.format(packet, contents[2])) 
 		sock.close()
 
-	def send_to_k_dest(self, k, data): 
+	def send_to_k_dest(self, k, data):
+		""" 
+		This function sends a packet from the source host ( with id = '101' ) to its neighboring router.
+		The data packet sent tells the neighboring router how many destinations this data packet should go to
+		"""
+ 
 		sock = socket(AF_INET, SOCK_DGRAM)
 		sock.setsockopt(SOL_SOCKET,SO_REUSEADDR,1)
 		sock.bind(('',self.port))
@@ -91,28 +102,19 @@ class Host:
 			packet, addr = sock.recvfrom(self.buffer_size)
 			contents = read_pkt(packet)
 			print('Receive: {}\tFrom: {}'.format(packet, contents[2]))
-			logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
-			#Idk if we should do handle the hellos like below for hosts 
+			"""   
+			Currently, hosts do not respond to any incoming packets. They only recieve in their
+			intf_listen state 
+			"""
 			if contents[0] == 0: #Hello
 				pass
-				#if contents[1] == 0:
-					#pass
-				#elif contents[1] == 1 and self.check_route(contents[2]) == False:
-					#packet = createHellopkt(0, self.id)
-					#sock.sendto(packet, addr)
-					#self.routing_table.append({'dest_id': contents[2], 'dest_addr': addr[0], 'dest_port': addr[1]})
-				#elif contents[1] == 1 and self.check_route(contents[2]) == True:
-					#packet = createHellopkt(0, self.id)
-					#sock.sendto(packet, addr)
-				#print('Sent: {}\tTo: {}'.format(packet, contents[2]))				
 			elif contents[0] == 1: #LS
 				pass
 			elif contents[0] == 3: #Data
 				pass
 			elif contents[0] == 4: #ACK
 				pass
-			#print(self.routing_table)
 		sock.close()
 
 if __name__ == '__main__':

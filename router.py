@@ -40,8 +40,11 @@ class Router:
         return None
 
     def pick_k_closest_hosts(self, k):
+        """ 
+        Picks the k closest host routing destinations, copies data packet and sends out to 
+        those k closests hosts
+        """
         hosts = []
-        #hosts = np.asarray([route for route in self.routing_table if 101 < int(route['dest_id']) < 200])
         for route in self.routing_table:
             if route['dest_id'] is not '-':
                 if 101 < int(route['dest_id']) < 200:
@@ -54,7 +57,10 @@ class Router:
         return np.asarray(hosts[host_cost_idx])
          
     def update_routing_table(self, new_table, src, src_addr):
-
+        """ 
+        Adds new unknown routes to routing table and then calls save_routing_table 
+        to overwrite old routing table file
+        """
         for new_route in new_table:
             found_neighbor, found_dest = False, False
             for route in self.routing_table:
@@ -123,6 +129,7 @@ class Router:
         broadcast_sock.close()
 
     def ls_broadcast(self):
+        #Sends out a broadcast with a Hello packet to all neighbors via a broadcast adress
         temp_routing_table = self.routing_table
 
         broadcast_sock = socket(AF_INET, SOCK_DGRAM)
@@ -140,21 +147,14 @@ class Router:
                 broadcast_sock.sendto(packet, (self.routing_table[x]['bcast'], self.port))
                 print('Iface: {}\tTo: {}'.format(self.routing_table[x]['iface'], '{}, 8888'.format(self.routing_table[x]['bcast'])))
 
-                #packet,addr = broadcast_sock.recvfrom(self.buffer_size)
-                #contents = read_pkt(packet)
-                #self.update_routing_table(contents[4], contents[2], addr) #received table, src
-
             except OSError as e:
                 continue
-
-        #if len(temp_routing_table) is not len(self.routing_table):
-        #    broadcast_sock.close()
-        #    self.ls_broadcast()
 
         broadcast_sock.close()
         self.intf_listen()
 
     def intf_listen(self):
+        #Listens on all interfaces and handles all incoming packets based on their packet type
         print('Listening on all interfaces')
         sock = socket(AF_INET, SOCK_DGRAM)
         sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1) #To send broadcasts using bcast addr for LS
@@ -165,7 +165,6 @@ class Router:
             packet, addr = sock.recvfrom(self.buffer_size)
             contents = read_pkt(packet)
             print('Received: {}\tFrom: {}'.format(packet, contents[2]))
-            logging.info('Received: {}\tFrom: {}'.format(packet, contents[2]))
 
             if contents[0] == 0:   #Hello
                 if contents[1] == 0:
@@ -190,15 +189,10 @@ class Router:
                 #Random delay before ls_broadcasting
                 time.sleep(random.random())
 
-                #sock.close()
-                #self.ls_broadcast()
                 if temp_routing_table is not len(self.routing_table):
                     #If something gets updated it triggers a routing update
                     sock.close()
                     self.ls_broadcast()
-
-                #else:
-                #    continue
 
             elif contents[0] == 3: #Data
                 src, seq, dest, Ndest = contents[2], contents[1], contents[5], contents[4]
@@ -249,9 +243,6 @@ class Router:
         sock.close()
 
 if __name__=='__main__':
-    #Assuming that therouter knows the number of nodes in the network, this will be changed
-    #nodes = 10
-
     router=Router()
     logging.basicConfig(filename='debug_logs/{}_debug.log'.format(router.id), level=logging.INFO)
     

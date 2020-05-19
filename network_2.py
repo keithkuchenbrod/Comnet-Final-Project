@@ -2,8 +2,6 @@
 from mininet.net import Mininet
 from mininet.log import lg, info
 from mininet.cli import CLI
-#from mininet.node import Node
-#from mininet.link import TCLink
 from cleanup import cleanup
 import logging
 from utility import *
@@ -72,14 +70,6 @@ def example_network_2():
     router6.setIP('192.168.1.16/24', intf='206-eth0')
     router6.setIP('192.168.1.17/24', intf='206-eth1')
     router6.setIP('192.168.1.18/24', intf='206-eth2')
-
-    #Set up forwarding on routers
-    #r1.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
-    #r2.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
-    #r3.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
-    #r4.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
-    #r5.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
-    #r6.cmd( 'sysctl -w net.ipv4.ip_forward=1' )
 
     #Set routes in each namespace will try to automate making these dictionaries later. Already have some code to kinda do this
     routers = [r1, r2, r3, r4, r5, r6]

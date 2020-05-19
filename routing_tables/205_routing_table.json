@@ -64,15 +64,6 @@
     },
     {
         "bcast": "-",
-        "cost": 3,
-        "dest_addr": "192.168.1.13",
-        "dest_id": 102,
-        "dest_port": 8888,
-        "gateway": "-",
-        "iface": "-"
-    },
-    {
-        "bcast": "-",
         "cost": 2,
         "dest_addr": "192.168.1.16",
         "dest_id": 103,
@@ -85,6 +76,15 @@
         "cost": 2,
         "dest_addr": "192.168.1.16",
         "dest_id": 104,
+        "dest_port": 8888,
+        "gateway": "-",
+        "iface": "-"
+    },
+    {
+        "bcast": "-",
+        "cost": 3,
+        "dest_addr": "192.168.1.13",
+        "dest_id": 102,
         "dest_port": 8888,
         "gateway": "-",
         "iface": "-"
